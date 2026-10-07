@@ -42,44 +42,34 @@ This allows the total model capacity to grow while attempting to keep inference 
 
 A conventional dense model can be represented as:
 
-```text
-Input
-  ↓
-Entire Neural Network
-  ↓
-Output
+```mermaid
+flowchart LR
+    I["Input"] --> M["Entire Neural Network"]
+    M --> O["Output"]
 ```
 
 A conventional MoE model instead activates a subset of a fixed collection of experts:
 
-```text
-Input Token
-     ↓
-   Router
-     ↓
- Selected Experts
-     ↓
-Combination
-     ↓
-Output
+```mermaid
+flowchart LR
+    X["Input Token"] --> R["Router"]
+    R --> S["Selected Experts"]
+    S --> C["Combination"]
+    C --> O["Output"]
 ```
 
 Titan Brain extends this concept:
 
-```text
-                  ┌─────────────────────┐
-                  │     Titan Brain     │
-                  │                     │
-Input Token ────► │  Internal Router    │
-                  │         ↓           │
-                  │  3–4 Active Experts │
-                  │         ↓           │
-                  │   Shared Processing │
-                  │         ↓           │
-                  │ Internal Knowledge  │
-                  └─────────────────────┘
-                           ↓
-                         Output
+```mermaid
+flowchart TB
+    X["Input Token"] --> TBX
+    subgraph TBX["Titan Brain"]
+        direction TB
+        R["Internal Router"] --> ACT["3–4 Active Experts"]
+        ACT --> SP["Shared Processing"]
+        SP --> IK["Internal Knowledge"]
+    end
+    TBX --> O["Output"]
 ```
 
 The important difference is that the **brain itself grows**.
@@ -92,53 +82,34 @@ The defining concept of Titan Brain is an **Expert Growth Loop**.
 
 Instead of requiring a complete retraining cycle:
 
-```text
-New capability
-      ↓
-Retrain entire model
-      ↓
-New model
+```mermaid
+flowchart LR
+    A["New capability"] --> B["Retrain entire model"]
+    B --> C["New model"]
 ```
 
 Titan Brain explores:
 
-```text
-New capability
-      ↓
-Detect capability gap
-      ↓
-Create new expert
-      ↓
-Collect targeted training data
-      ↓
-Small expert-training phase
-      ↓
-Evaluate expert
-      ↓
-Integrate expert into router
-      ↓
-Brain gains new capability
+```mermaid
+flowchart TD
+    A["New capability"] --> B["Detect capability gap"]
+    B --> C["Create new expert"]
+    C --> D["Collect targeted training data"]
+    D --> E["Small expert-training phase"]
+    E --> F["Evaluate expert"]
+    F --> G["Integrate expert into router"]
+    G --> H["Brain gains new capability"]
+    H -. "next capability" .-> A
 ```
 
 This means the total number of experts can potentially increase over time. For example:
 
-```text
-Initial Brain               New recurring capability detected
-                                      ↓
-Expert 1                            Create Expert 7
-Expert 2                                  ↓
-Expert 3                           Targeted training
-Expert 4                                  ↓
-Expert 5                            Expert 7 joins
-Expert 6                                  ↓
-                                       Expanded Brain
-                                       Expert 1
-                                       Expert 2
-                                       Expert 3
-                                       Expert 4
-                                       Expert 5
-                                       Expert 6
-                                       Expert 7
+```mermaid
+flowchart TD
+    INIT["Initial Brain<br/>1–6 experts"] --> GAP["New recurring capability detected"]
+    GAP --> C7["Create Expert 7"]
+    C7 --> TT["Targeted training"]
+    TT --> EXP["Expanded Brain<br/>7 experts"]
 ```
 
 The important distinction is that **Expert 7 does not need to participate in every inference operation**. The router only activates the experts relevant to each token.
@@ -198,21 +169,18 @@ This is one of the most important aspects of the architecture.
 
 The new expert does not necessarily require a complete LLM training process. Instead:
 
-```text
-General Model Knowledge
-        +
-Targeted Dataset
-        ↓
-Specialized Expert
+```mermaid
+flowchart TD
+    A["General Model Knowledge"] --> S["Specialized Expert"]
+    B["Targeted Dataset"] --> S
 ```
 
 For example, suppose the system repeatedly encounters difficult mathematical reasoning tasks. The growth system could create:
 
-```text
-Expert 27
-Specialization:
-Mathematical Reasoning
-```
+| Field | Value |
+|---|---|
+| Expert ID | 27 |
+| Specialization | Mathematical Reasoning |
 
 and train it using a targeted dataset containing:
 
@@ -259,14 +227,11 @@ This is a central design principle.
 
 Imagine Titan Brain eventually contains 1,000 experts. A naive system might require hundreds of experts to participate in every token. Titan Brain instead attempts:
 
-```text
-1,000 total experts
-        ↓
-      Router
-        ↓
-Maximum 3–4 experts
-        ↓
-Token computation
+```mermaid
+flowchart TD
+    A["1,000 total experts"] --> B["Router"]
+    B --> C["Maximum 3–4 experts"]
+    C --> D["Token computation"]
 ```
 
 Therefore:
@@ -298,67 +263,46 @@ flowchart TD
     W --> O["Next Transformer Stage"]
 ```
 
-The router may score many candidate experts, but only the highest-ranked **3–4 experts** are activated. For example:
+The router may score many candidate experts, but only the highest-ranked **3–4 experts** are activated. For example, for the token `"Calculate the derivative of..."`:
 
-```text
-Token:
-"Calculate the derivative of..."
-
-Router scores:
-
-Mathematics Expert       0.47
-Reasoning Expert         0.28
-Programming Expert       0.09
-Language Expert          0.07
-General Expert           0.04
-History Expert           0.01
-...
-
-Selected:
-
-Mathematics   ✓
-Reasoning     ✓
-Language      ✓
-
-Others        ✗
-```
+| Expert | Router Score | Selected |
+|---|---|---|
+| Mathematics Expert | 0.47 | ✓ |
+| Reasoning Expert | 0.28 | ✓ |
+| Language Expert | 0.11 | ✓ |
+| Programming Expert | 0.05 | ✗ |
+| General Expert | 0.03 | ✗ |
+| History Expert | 0.01 | ✗ |
 
 The exact routing mechanism remains an experimental research question.
 
 ## The Brain Is Internal
 
-A critical architectural distinction is that the **Brain is not an external memory component**. Titan Brain refers to the complete adaptive neural architecture itself.
+A critical architectural distinction is that the **Brain is not an external memory component**. Titan Brain refers to the complete adaptive neural architecture itself:
 
-```text
-┌─────────────────────────────────────────────┐
-│                 TITAN BRAIN                 │
-│                                             │
-│  ┌──────────────┐                           │
-│  │    Router    │                           │
-│  └──────┬───────┘                           │
-│         │                                   │
-│    ┌────┴───────────────┐                   │
-│    ↓        ↓       ↓    ↓                  │
-│ Expert   Expert  Expert Expert              │
-│   1        8      27     41                 │
-│    │        │       │      │                │
-│    └────────┴───────┴──────┘                │
-│              │                              │
-│       Internal Knowledge                    │
-│       & Learned Parameters                  │
-│              │                              │
-│       Shared Model Layers                   │
-│              │                              │
-│        Output Representation                │
-│                                             │
-│      Expert Growth Mechanism                │
-│              │                              │
-│       New Expert Creation                   │
-│              ↓                              │
-│       Targeted Training                     │
-│              ↓                              │
-│       Router Integration                    │
-└─────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph BRAIN["TITAN BRAIN"]
+        direction TB
+        R["Router"]
+        R --> E1["Expert 1"]
+        R --> E8["Expert 8"]
+        R --> E27["Expert 27"]
+        R --> E41["Expert 41"]
+        E1 --> IK["Internal Knowledge<br/>& Learned Parameters"]
+        E8 --> IK
+        E27 --> IK
+        E41 --> IK
+        IK --> SL["Shared Model Layers"]
+        SL --> OR["Output Representation"]
+    end
+    OR --> OUT["Output"]
+    subgraph GROWTH["Expert Growth Mechanism"]
+        direction TB
+        NC["New Expert Creation"] --> TT["Targeted Training"]
+        TT --> RI["Router Integration"]
+    end
+    GROWTH -.-> R
 ```
 
 There can still be persistent storage for datasets, checkpoints, training states, or auxiliary information, but **the conceptual brain itself is the neural architecture**, not an external database.
@@ -393,35 +337,20 @@ The expert pool therefore acts as part of the model's internal computational cap
 
 Every expert can conceptually move through several states:
 
-```text
-                     ┌───────────────┐
-                     │    Created    │
-                     └───────┬───────┘
-                             ↓
-                     ┌───────────────┐
-                     │    Training   │
-                     └───────┬───────┘
-                             ↓
-                     ┌───────────────┐
-                     │   Evaluation  │
-                     └───────┬───────┘
-                             ↓
-                       ┌─────┴─────┐
-                       │           │
-                     Failed      Passed
-                       │           │
-                       ↓           ↓
-                    Retrain     Integrate
-                                   │
-                                   ↓
-                             Active Expert
-                                   │
-                                   ↓
-                              Monitoring
-                                   │
-                       ┌───────────┴───────────┐
-                       ↓                       ↓
-                    Improve                  Retire
+```mermaid
+stateDiagram-v2
+    [*] --> Created
+    Created --> Training
+    Training --> Evaluation
+    Evaluation --> Retrain : Failed
+    Evaluation --> Integrate : Passed
+    Retrain --> Training
+    Integrate --> ActiveExpert
+    ActiveExpert --> Monitoring
+    Monitoring --> Improve
+    Monitoring --> Retire
+    Improve --> ActiveExpert
+    Retire --> [*]
 ```
 
 This creates an **expert lifecycle management system**.
@@ -449,30 +378,14 @@ However, these labels are conceptual. The system should ultimately determine spe
 
 Another possible growth mechanism is **expert splitting**.
 
-Suppose one expert becomes responsible for several related capabilities:
+Suppose one expert becomes responsible for several related capabilities — for example, an Expert 12 covering Python, Java, C++, debugging, and software architecture. If the workload becomes sufficiently diverse, Titan Brain could create specialized descendants:
 
-```text
-Expert 12
-
-Programming
-├── Python
-├── Java
-├── C++
-├── Debugging
-└── Software Architecture
-```
-
-If the workload becomes sufficiently diverse, Titan Brain could create specialized descendants:
-
-```text
-              Expert 12
-                  │
-        ┌─────────┴─────────┐
-        ↓                   ↓
- Python Expert        Architecture Expert
-        │
-        ↓
- Debugging Expert
+```mermaid
+flowchart TB
+    E12["Expert 12<br/>Programming<br/>(Python · Java · C++ · Debugging · Software Architecture)"]
+    E12 --> P["Python Expert"]
+    E12 --> A["Architecture Expert"]
+    P --> D["Debugging Expert"]
 ```
 
 This creates the possibility of an evolving **expert hierarchy**.
@@ -527,11 +440,12 @@ flowchart LR
 
 Over time:
 
-```text
-Version 1        Version 2        Version 3        Version 4        Version N
-    ↓                ↓                ↓                ↓                ↓
-10 Experts       17 Experts       31 Experts       57 Experts   Potentially very
-                                                                large expert pool
+```mermaid
+flowchart LR
+    V1["Version 1<br/>10 experts"] --> V2["Version 2<br/>17 experts"]
+    V2 --> V3["Version 3<br/>31 experts"]
+    V3 --> V4["Version 4<br/>57 experts"]
+    V4 --> VN["Version N<br/>potentially very large expert pool"]
 ```
 
 The number of experts can increase while token-level computation remains sparse.
@@ -540,30 +454,20 @@ The number of experts can increase while token-level computation remains sparse.
 
 Full-model retraining is expensive. Titan Brain explores a different approach:
 
-```text
-Full Model Training
-
-Huge Dataset
-     ↓
-Entire Model
-     ↓
-Huge Compute Requirement
-```
-
-versus:
-
-```text
-Expert Growth
-
-Capability Gap
-     ↓
-Small Targeted Dataset
-     ↓
-One New Expert
-     ↓
-Targeted Training
-     ↓
-Integration
+```mermaid
+flowchart TD
+    subgraph F["Full Model Training"]
+        direction TB
+        F1["Huge Dataset"] --> F2["Entire Model"]
+        F2 --> F3["Huge Compute Requirement"]
+    end
+    subgraph G["Expert Growth"]
+        direction TB
+        G1["Capability Gap"] --> G2["Small Targeted Dataset"]
+        G2 --> G3["One New Expert"]
+        G3 --> G4["Targeted Training"]
+        G4 --> G5["Integration"]
+    end
 ```
 
 The hypothesis is that **incremental specialization could provide a more scalable path for increasing model capabilities**. This is an architectural research hypothesis, not an established claim.
@@ -572,15 +476,15 @@ The hypothesis is that **incremental specialization could provide a more scalabl
 
 As the brain grows, routing imbalance becomes increasingly important. For example:
 
-```text
-Expert 1   ████████████████████
-Expert 2   █████████████████
-Expert 3   ███
-Expert 4   █
-Expert 5   █
-```
+| Expert | Utilization |
+|---|---|
+| Expert 1 | ████████████████████ ~95% |
+| Expert 2 | █████████████████ ~85% |
+| Expert 3 | ███ ~20% |
+| Expert 4 | █ ~5% |
+| Expert 5 | █ ~5% |
 
-A routing system like this wastes the available expert capacity. Titan Brain therefore needs mechanisms that encourage:
+A routing pattern like this wastes the available expert capacity. Titan Brain therefore needs mechanisms that encourage:
 
 - balanced expert utilization
 - meaningful specialization
@@ -611,16 +515,13 @@ This prevents uncontrolled expert proliferation.
 
 ## Expert Retirement
 
-Growth does not necessarily mean that every expert remains active forever. Experts could eventually become:
+Growth does not necessarily mean that every expert remains active forever:
 
-```text
-Active
-   ↓
-Low utilization
-   ↓
-Evaluation
-   ↓
-Retired / Merged / Re-specialized
+```mermaid
+flowchart TD
+    A["Active"] --> B["Low utilization"]
+    B --> C["Evaluation"]
+    C --> D["Retired / Merged / Re-specialized"]
 ```
 
 This creates the possibility of an evolving expert population rather than an endlessly expanding one.
@@ -666,32 +567,23 @@ The two major systems are therefore:
 
 ### Inference
 
-```text
-Token
- ↓
-Router
- ↓
-Maximum 3–4 Experts
- ↓
-Shared Processing
- ↓
-Output
+```mermaid
+flowchart TD
+    T["Token"] --> R["Router"]
+    R --> E["Maximum 3–4 Experts"]
+    E --> S["Shared Processing"]
+    S --> O["Output"]
 ```
 
 ### Growth
 
-```text
-Capability Gap
- ↓
-New Expert
- ↓
-Small Targeted Training
- ↓
-Validation
- ↓
-Integration
- ↓
-Larger Brain
+```mermaid
+flowchart TD
+    A["Capability Gap"] --> B["New Expert"]
+    B --> C["Small Targeted Training"]
+    C --> D["Validation"]
+    D --> E["Integration"]
+    E --> F["Larger Brain"]
 ```
 
 ## Research Questions
@@ -717,19 +609,16 @@ Titan Brain is based on several principles:
 
 ### 1. Grow the model instead of constantly retraining everything
 
-```text
-New capability
-      ↓
-New specialized expert
+```mermaid
+flowchart LR
+    A["New capability"] --> B["New specialized expert"]
 ```
 
 ### 2. Keep inference sparse
 
-```text
-Potentially thousands of experts
-            ↓
-     Maximum 3–4 active
-       per token
+```mermaid
+flowchart TD
+    A["Potentially thousands of experts"] --> B["Maximum 3–4 active per token"]
 ```
 
 ### 3. Specialization should emerge
